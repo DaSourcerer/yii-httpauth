@@ -17,13 +17,45 @@
 /**
  * HttpAuthFilter class
  *
- * @author Da:Sourcerer
+ * This filter implements http basic authentication for controller actions. This does not affect users who are already
+ * logged in through regular means.
+ *
+ * @author Da:Sourcerer <webmaster@dasourcerer.net>
  * @version 1.0
  * @license http://www.apache.org/licenses/LICENSE-2.0 ASL 2.0
  */
 class HttpAuthFilter extends CFilter
 {
+	/**
+	 * The model handling authentication
+	 *
+	 * In a new, bootstrapped Yii application, this will be 'LoginModel' (which also happens to be the default).
+	 * @var string
+	 */
 	public $authModel='LoginForm';
+
+	/**
+	 * The login model's attribute carrying the username
+	 * @var string
+	 */
+	public $usernameAttribute='username';
+
+	/**
+	 * The login model's attribute carrying the password
+	 * @var string
+	 */
+	public $passwordAttribute='password';
+
+	/**
+	 * The 'realm' advertised to the http client
+	 *
+	 * This can be some descriptive text regarding the resource you are trying to protect. If set to <kbd>null</kbd>,
+	 * the value of Yii::app()->name will be taken. Please see to it that no characters outside iso-8859-1 make it here
+	 * as this could seriously cripple http responses. Also note that this value will be turned into a quoted string
+	 * which mandates the escaping of double-quotes (") and backslashes (\). This seems to cause problems with some
+	 * browsers like <a href="https://bugzilla.mozilla.org/show_bug.cgi?id=676358">Firefox</a>.
+	 * @var string|null
+	 */
 	public $realm;
 
 	public function preFilter($filterChain)
@@ -35,8 +67,8 @@ class HttpAuthFilter extends CFilter
 			$this->sendAuthHeaders();
 
 		$model=new $this->authModel;
-		$model->username=$_SERVER['PHP_AUTH_USER'];
-		$model->password=$_SERVER['PHP_AUTH_PW'];
+		$model->{$this->usernameAttribute}=$_SERVER['PHP_AUTH_USER'];
+		$model->{$this->passwordAttribute}=$_SERVER['PHP_AUTH_PW'];
 
 		if(!$model->login())
 			$this->sendAuthHeaders();
@@ -44,6 +76,10 @@ class HttpAuthFilter extends CFilter
 		return true;
 	}
 
+	/**
+	 * Send out the headers demanding authentication by the client among a 401 (unauthorized) status code.
+	 * @throws CHttpException
+	 */
 	protected function sendAuthHeaders()
 	{
 		if($this->realm===null)
